@@ -1,0 +1,100 @@
+cabal-version: 3.4
+name: examples
+version: 0.1.0.0
+license: BSD-3-Clause
+license-file: LICENSE
+author: Anonymous
+maintainer: anonymous@anonymous.anonymous
+build-type: Simple
+
+library
+  build-depends:
+    array ^>=0.5,
+    base ^>=4.17,
+    containers ^>=0.7,
+    deepseq ^>=1.4,
+    falsify ^>=0.2,
+    hashable ^>=1.4,
+    hedgehog ^>=1.5,
+    mtl ^>=2.3,
+    pretty ^>=1.1,
+    QuickCheck ^>=2.15,
+    random ^>=1.2,
+    splitmix ^>=0.1,
+    statistics ^>=0.16,
+    unification-fd >=0.12,
+    vector ^>=0.13,
+
+  exposed-modules:
+    Control.Monad.Gen
+    Data.Featured
+    Example.Bool
+    Example.Graph
+    Example.Lambda
+    Example.List
+    Example.NonInterference.Register
+    Example.NonInterference.Register.Flags
+    Example.NonInterference.Register.Generation
+    Example.NonInterference.Register.Indist
+    Example.NonInterference.Register.Instructions
+    Example.NonInterference.Register.Labels
+    Example.NonInterference.Register.Machine
+    Example.NonInterference.Register.Memory
+    Example.NonInterference.Register.Mutate
+    Example.NonInterference.Register.Primitives
+    Example.NonInterference.Register.Rules
+    Example.NonInterference.Register.Shrinking
+    Example.NonInterference.Register.SSNI
+    Example.NonInterference.Register.Zipper
+    Example.NonInterference.Stack.Flags
+    Example.NonInterference.Stack.Generation
+    Example.NonInterference.Stack.GenericMachine
+    Example.NonInterference.Stack.Instr
+    Example.NonInterference.Stack.Labels
+    Example.NonInterference.Stack.LaTeX
+    Example.NonInterference.Stack.Machine
+    Example.NonInterference.Stack.Observable
+    Example.NonInterference.Stack.ObservableInst
+    Example.NonInterference.Stack.Pretty
+    Example.NonInterference.Stack.Trace
+    Example.NonInterference.Stack.Util
+    Example.NonInterference.Stack
+    Example.Pathological
+    Example.Tree
+    Language.Hedgehog
+    Language.Falsify
+    Language.FalsifyHC
+    Language.HedgehogHC
+    Language.QuickCheck
+    Language.QuickCheckHC
+    Language.Syntax
+
+  ghc-options: -Wall -O2
+  hs-source-dirs: src
+  default-language: Haskell2010
+
+benchmark bench
+  type: exitcode-stdio-1.0
+  build-depends:
+    base ^>=4.17,
+    containers ^>=0.7,
+    criterion ^>=1.6,
+    deepseq ^>=1.4,
+    mtl ^>=2.3,
+    examples
+  ghc-options: -Wall -main-is Bench -O2
+  default-language: Haskell2010
+  main-is: src/Bench.hs
+
+test-suite test
+  type: exitcode-stdio-1.0
+  build-depends:
+    base ^>=4.17,
+    containers ^>=0.7,
+    mtl ^>=2.3,
+    tasty ^>=1.5,
+    tasty-hunit ^>=0.10,
+    examples
+  ghc-options: -Wall -main-is Test -O2
+  default-language: Haskell2010
+  main-is: src/Test.hs
