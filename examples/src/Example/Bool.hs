@@ -2,7 +2,7 @@
 
 module Example.Bool where
 
-import Control.Monad.Gen (MonadGen, range, shrink, label)
+import Control.Monad.Gen (MonadGen, range, shrink)
 
 bool ∷ (MonadGen m) ⇒ m Bool
 bool = do

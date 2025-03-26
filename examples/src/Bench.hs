@@ -62,9 +62,9 @@ test n p m =
     , testGen (m ∷ HH'.Gen a)
     , testShrink p (m ∷ HH'.Gen a)
     , testGen (m ∷ FF.Gen a)
-    -- , testShrink p (m ∷ FF.Gen a)
+    , testShrink p (m ∷ FF.Gen a)
     , testGen (m ∷ FF'.Gen a)
-    -- , testShrink p (m ∷ FF'.Gen a)
+    , testShrink p (m ∷ FF'.Gen a)
     , testGen (m ∷ QC.Gen a)
     , testGen (m ∷ QC'.Gen a)
     ]

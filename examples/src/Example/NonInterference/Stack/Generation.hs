@@ -30,7 +30,7 @@ import Example.NonInterference.Stack.Flags
 import Example.NonInterference.Stack.Instr
 import Example.NonInterference.Stack.Labels
 
-import Control.Monad.Gen (MonadGen (label, range), element, frequency, liftG2, liftG3, listOf, oneof, range', replicateG, mapG)
+import Control.Monad.Gen (MonadGen (label, range), element, frequency, liftG2, liftG3, listOf, oneof, range', replicateG, mapG, sequenceG)
 import Control.Monad.RWS (MonadReader (ask))
 import Example.NonInterference.Stack.Machine
 
@@ -97,7 +97,7 @@ genSequence = do
   amemSize ← label 0 (uncurry range' (0, n))
   amem ← case starting_as getFlags of
     StartInitial → label 1 initMem
-    _ → label 2 (sequence [arbitrary | _ ← [1 .. amemSize]])
+    _ → label 2 (sequenceG [arbitrary | _ ← [1 .. amemSize]])
   aimemSize ← label 3 (uncurry range' $ gen_instrs_range getFlags)
   let genInstrMem ∷
         Int → -- Current step
