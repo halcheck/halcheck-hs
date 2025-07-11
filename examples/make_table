@@ -1,0 +1,15 @@
+#!/bin/bash
+sed '/^variance/d' "$1" | # Remove variance reports
+  awk 'NR % 6 == 2'     | # Get the lines starting with "time"
+  tr -s ' '             | # Remove duplicate spaces
+  cut -d' ' -f2-3       | # Obtain timings with units
+  # Convert all units to milliseconds
+  sed 's/\([0-9]\)\([0-9]\)\.\([0-9]\)\([0-9]\) μs/0.0\1\2\3\4 ms/g' |
+  sed 's/\([0-9]\)\([0-9]\)\([0-9]\)\.\([0-9]\) μs/0.\1\2\3\4 ms/g'  |
+  sed 's/\([0-9]\)\.\([0-9]\)\([0-9]\)\([0-9]\) s/\1\2\3\4 ms/g'     |
+  sed 's/\([0-9]\)\([0-9]\)\.\([0-9]\)\([0-9]\) s/\1\2\3\40 ms/g'    |
+  sed 's/\([0-9]\)\([0-9]\)\([0-9]\)\.\([0-9]\) s/\1\2\3\400 ms/g'   |
+  cut -d' ' -f1 | # Remove units
+  xargs -n 15   | # Group by experiment
+  awk '{ print "\\gen{"$1"}{"$2"}{"$3"}{"$4"}{"$5"}{"$6"} & \\gen{"$7"}{"$8"}{"$9"}{"$10"}{"$11"}{"$12"} & \\genna{"$13"}{"$14"}{"$15"} \\\\" }' |
+  tail -n +3
