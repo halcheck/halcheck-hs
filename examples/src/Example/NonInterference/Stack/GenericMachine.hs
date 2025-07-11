@@ -115,7 +115,7 @@ isSteps css =
 stepMany ∷ (Machine s, MonadGen f) ⇒ s → f s
 stepMany cs =
   if isWF cs
-    then stepMany =<< step cs
+    then label 0 . stepMany =<< label 1 (step cs)
     else return cs
 
 stepN ∷ (Machine s, Monad m) ⇒ (s → m (Maybe s)) → s → Int → m [s]

@@ -1,8 +1,8 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE UnicodeSyntax #-}
-{-# LANGUAGE FlexibleContexts #-}
 
 module Control.Monad.Gen (
   MonadGen (..),
@@ -17,6 +17,7 @@ module Control.Monad.Gen (
   frequency,
   tryAll,
   mapG,
+  sequenceG,
   foldG,
   shrinkWith,
   MonadSample (..),
@@ -27,7 +28,7 @@ module Control.Monad.Gen (
 import Control.Applicative (Alternative (..))
 import Control.Monad (foldM, join)
 import Control.Monad.Except (ExceptT (..))
-import Control.Monad.Reader (MonadTrans (lift), ReaderT (..), MonadReader (ask))
+import Control.Monad.Reader (MonadReader (ask), MonadTrans (lift), ReaderT (..))
 import Control.Monad.State (MonadState (get, put), evalStateT)
 import Data.Proxy (Proxy (..))
 import Data.Ratio (Ratio, denominator, numerator, (%))
@@ -99,6 +100,9 @@ mapG f =
     i ← get
     put (i + 1)
     lift (label i (f x))
+
+sequenceG ∷ (MonadGen f, Traversable t) ⇒ t (f a) → f (t a)
+sequenceG = mapG id
 
 foldG ∷ (Foldable t, MonadGen m) ⇒ (b → a → m b) → b → t a → m b
 foldG op sd xs = snd <$> foldM (\(i, x) r → (,) (i + 1) <$> label i (op x r)) (0 ∷ Int, sd) xs

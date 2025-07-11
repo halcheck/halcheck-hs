@@ -4,11 +4,10 @@
 module Example.Graph (graph, connectedGraph) where
 
 import Control.Monad (filterM)
-import Control.Monad.Gen (MonadGen (..))
+import Control.Monad.Gen (MonadGen (..), shrinkWith)
 import Control.Monad.Reader (MonadReader, asks)
 import Data.Array (bounds)
 import Data.Graph (Graph, buildG, components, edges)
-import Example.Bool (bool)
 
 graph ∷ (MonadGen m, MonadReader Int m) ⇒ m Graph
 graph = do
@@ -19,10 +18,15 @@ graph = do
       ( \(i, j) →
           if i == j
             then return False
-            else label i (label j bool)
+            else label i (label j (range False True))
       )
       ((,) <$> [1 .. sz] <*> [1 .. sz])
-  return (buildG (1, sz) es)
+  es' ← shrinkWith dropAny (pure es)
+  return (buildG (1, sz) es')
+
+dropAny ∷ [a] → [[a]]
+dropAny [] = []
+dropAny (x : xs) = xs : map (x :) (dropAny xs)
 
 invert ∷ Graph → Graph
 invert g =
