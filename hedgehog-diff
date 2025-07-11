@@ -1,0 +1,14 @@
+#!/bin/bash
+
+ROOT=$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
+
+TMP=$(mktemp -d)
+trap 'rm -rf -- "$TMP"' EXIT
+
+cd $TMP
+git clone -n --branch=1.5 --depth=1 --filter=tree:0 https://github.com/hedgehogqa/haskell-hedgehog
+cd haskell-hedgehog
+git sparse-checkout set --no-cone /hedgehog
+git checkout
+diff -rdubwZB hedgehog/src $ROOT/hedgehog-hc/src | diffstat
+diff -rdubwZB hedgehog/test $ROOT/hedgehog-hc/test | diffstat

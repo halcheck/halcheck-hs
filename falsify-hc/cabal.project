@@ -1,0 +1,6 @@
+packages: lib, demo
+
+allow-newer: sop-core:base
+
+package falsify
+  tests: true

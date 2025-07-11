@@ -1,0 +1,13 @@
+#!/bin/bash
+
+ROOT=$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
+
+TMP=$(mktemp -d)
+trap 'rm -rf -- "$TMP"' EXIT
+
+cd $TMP
+git clone https://github.com/well-typed/falsify
+cd falsify
+git checkout -q b4ced3e1a4b4c31b4ec8d26342cb4b448deaa5ba
+diff -rdubwZB lib/src $ROOT/falsify-hc/lib/src | diffstat
+diff -rdubwZB lib/test $ROOT/falsify-hc/lib/test | diffstat
