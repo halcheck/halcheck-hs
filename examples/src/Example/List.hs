@@ -30,9 +30,11 @@ isSorted ∷ (Ord a) ⇒ [a] → Bool
 isSorted xs = all (uncurry (<=)) (zip xs (tail xs))
 
 distinctList ∷ (MonadGen m, MonadReader Int m, Ord a) ⇒ m a → m [a]
-distinctList m = do
-  xs ← label 0 (list m)
-  if isDistinct xs then pure xs else label 1 (distinctList m)
+distinctList m = go 0
+  where
+    go n = do
+      xs ← label n (list m)
+      if isDistinct xs then pure xs else go (n + 1)
 
 isDistinct ∷ (Ord a) ⇒ [a] → Bool
 isDistinct (sort → xs) = all (uncurry (/=)) (zip xs (tail xs))

@@ -16,9 +16,8 @@
 
 module Example.NonInterference.Stack.ObservableInst where
 
-import Control.Applicative
 import Control.Monad
-import Control.Monad.Gen (frequency, oneof)
+import Control.Monad.Gen (frequency, oneof, label, mapG, liftG2)
 
 import Data.List ((\\))
 
@@ -73,48 +72,48 @@ instance (Flaggy DynFlags) ⇒ Observable AS where
       EquivMem →
         if pcIs L
           then do
-            aimem ← varyImem $ aimem as
-            amem ← varyMem $ amem as
+            aimem ← label 0 (varyImem $ aimem as)
+            amem ← label 1 (varyMem $ amem as)
             astk ←
               if starting_as getFlags == StartInitial
                 then return []
-                else arbitrary -- CH: XXX: this does no smart ints!
+                else label 2 arbitrary -- CH: XXX: this does no smart ints!
             apc ← return $ apc as
             return AS{..}
           else do
-            as' ← arbitrary
+            as' ← label 3 arbitrary
             return as'{apc = apc as' `withLab` H}
       EquivLow →
         if pcIs L
           then do
-            aimem ← varyImem $ aimem as
-            amem ← varyMem $ amem as
-            astk ← varyStack $ astk as
+            aimem ← label 4 $ varyImem $ aimem as
+            amem ← label 5 $ varyMem $ amem as
+            astk ← label 6 $ varyStack $ astk as
             apc ← return $ apc as
             return AS{..}
           else do
-            as' ← arbitrary
+            as' ← label 7 arbitrary
             return as'{apc = apc as' `withLab` H}
       EquivWrongFull → do
-        aimem ← varyImem $ aimem as
-        amem ← varyMem $ amem as
-        astk ← varyStack $ astk as
-        apc ← varyAtom $ apc as
+        aimem ← label 8 $ varyImem $ aimem as
+        amem ← label 9 $ varyMem $ amem as
+        astk ← label 10 $ varyStack $ astk as
+        apc ← label 11 $ varyAtom $ apc as
         -- we could do a bit better by
         -- choosing just valid addresses
         return AS{..}
       EquivFull → do
-        aimem ← varyImem $ aimem as
-        amem ← varyMem $ amem as
+        aimem ← label 12 $ varyImem $ aimem as
+        amem ← label 13 $ varyMem $ amem as
         astk ←
           if pcIs L
-            then varyStack $ astk as
+            then label 14 $ varyStack $ astk as
             else do
-              l ← arbitrary
+              l ← label 15 $ arbitrary
               let stackTop = filter (not . isLowRet) l
-              stackRest ← varyStack $ cropTop $ astk as
+              stackRest ← label 16 $ varyStack $ cropTop $ astk as
               return $ stackTop ++ stackRest
-        apc ← varyAtom $ apc as -- ditto
+        apc ← label 17 $ varyAtom $ apc as -- ditto
         return AS{..}
    where
     pcIs l = lab (apc as) == l
@@ -163,13 +162,13 @@ instance (Flaggy DynFlags) ⇒ Observable AS where
     varyStkElt (AData (Labeled H i)) =
       oneof $
         [AData . Labeled H <$> varyInt i]
-          ++ [ ARet . Labeled H <$> liftA2 (,) sint arbitrary
+          ++ [ ARet . Labeled H <$> liftG2 (,) sint arbitrary
              | stk_elt_equiv getFlags == LabelOnTop
              ]
     varyStkElt (ARet a@(Labeled L _)) = ARet <$> pure a
     varyStkElt (ARet (Labeled H (i, r))) =
       oneof $
-        [ARet . Labeled H <$> liftA2 (,) (varyInt i) (vary r)]
+        [ARet . Labeled H <$> liftG2 (,) (varyInt i) (vary r)]
           ++ [AData . Labeled H <$> sint | stk_elt_equiv getFlags == LabelOnTop]
 
     varyInstr (Push a) = Push <$> varyAtom a
@@ -178,12 +177,12 @@ instance (Flaggy DynFlags) ⇒ Observable AS where
     varyMem =
       if starting_as getFlags == StartInitial
         then return
-        else mapM varyAtom
-    varyImem = mapM varyInstr
+        else mapG varyAtom
+    varyImem = mapG varyInstr
     varyStack =
       if starting_as getFlags == StartInitial
         then const $ return []
-        else mapM varyStkElt
+        else mapG varyStkElt
 
   shrinkV _ | shrink_nothing getFlags = []
   shrinkV (Variation as as') =

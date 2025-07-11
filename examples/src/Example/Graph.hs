@@ -17,8 +17,8 @@ graph = do
     filterM
       ( \(i, j) →
           if i == j
-            then return False
-            else label i (label j (range False True))
+          then return False
+          else label (i + (j - 1) * sz) (range False True)
       )
       ((,) <$> [1 .. sz] <*> [1 .. sz])
   es' ← shrinkWith dropAny (pure es)

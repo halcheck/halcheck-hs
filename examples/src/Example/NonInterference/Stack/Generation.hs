@@ -1055,7 +1055,7 @@ ainstrs imem_size slack as@(AS{amem = mem, astk = stk}) halt_weight =
                  , do
                     c_args ← label 0 (uncurry range' (0, maxArgs `min` length (takeWhile isAData stk)))
                     c_ret ← label 1 arbitrary
-                    pushAndDo (Call c_args c_ret) <$> labeled iaddr
+                    pushAndDo (Call c_args c_ret) <$> label 2 (labeled iaddr)
                  )
                | cally
                ]

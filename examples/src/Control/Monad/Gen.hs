@@ -1,7 +1,9 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UnicodeSyntax #-}
 
 module Control.Monad.Gen (
@@ -23,18 +25,22 @@ module Control.Monad.Gen (
   MonadSample (..),
   samplePathIO,
   listOf,
+  Monitored,
 ) where
 
 import Control.Applicative (Alternative (..))
-import Control.Monad (foldM, join)
-import Control.Monad.Except (ExceptT (..))
-import Control.Monad.Reader (MonadReader (ask), MonadTrans (lift), ReaderT (..))
-import Control.Monad.State (MonadState (get, put), evalStateT)
+import Control.Monad (foldM)
+import Control.Monad.Except (MonadError (..), ExceptT (..), runExceptT)
+import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Control.Monad.State (MonadState (..), StateT (..), evalStateT, MonadTrans (..))
+import Data.IntSet (IntSet)
+import qualified Data.IntSet as IntSet
 import Data.Proxy (Proxy (..))
 import Data.Ratio (Ratio, denominator, numerator, (%))
 import Data.Tree (Tree (..))
-import Data.Vector.Internal.Check (HasCallStack)
 import System.Random (randomRIO)
+
+import Debug.Trace
 
 class (Monad m) ⇒ MonadGen m where
   label ∷ Int → m a → m a
@@ -44,10 +50,10 @@ class (Monad m) ⇒ MonadGen m where
 
   choose ∷ Ratio Int → m Bool
   choose p
-    | 0 <= p && p <= 1 = (== numerator p) <$> chooseInt (denominator p)
-    | otherwise = error ("choose: " ++ show p ++ "∉ [0, 1]")
+    | 0 <= p && p <= 1 = (< numerator p) <$> chooseInt (denominator p - 1)
+    | otherwise = error ("choose: " ++ show p ++ " ∉ [0, 1]")
 
-  range ∷ (HasCallStack, Enum a) ⇒ a → a → m a
+  range ∷ Enum a ⇒ a → a → m a
   range i j = toEnum <$> go (fromEnum i) (fromEnum j)
    where
     go m n | m > n = error "range: invalid arguments"
@@ -113,12 +119,15 @@ element xs = do
   pure (xs !! i)
 
 oneof ∷ (MonadGen m) ⇒ [m a] → m a
-oneof = label 1 . join . label 0 . element . zipWith label [0 ..]
+oneof xs = do
+  let ys = zipWith label [1 ..] xs
+  y ← label 0 (element ys)
+  y
 
 frequency ∷ (MonadGen m) ⇒ [(Int, m a)] → m a
 frequency ms = do
   let go _ [] = error "IMPOSSIBLE"
-      go i ((k, m) : ms') = if i < k then m else go (i - k) ms'
+      go i ((k, m) : ms') = if i < k then label 1 m else go (i - k) ms'
   n ← label 0 (chooseInt (sum (map fst ms) - 1))
   go n (zipWith (\i (k, m) → (k, label i m)) [0 ..] ms)
 
@@ -155,6 +164,14 @@ instance (MonadGen m) ⇒ MonadGen (ExceptT r m) where
   shrinkInt = lift . shrinkInt
   shrink x xs = lift (shrink x xs)
 
+instance (MonadGen m) ⇒ MonadGen (StateT r m) where
+  label l (StateT m) = StateT (\s → label l (m s))
+  chooseInt = lift . chooseInt
+  choose = lift . choose
+  range a b = lift (range a b)
+  shrinkInt = lift . shrinkInt
+  shrink x xs = lift (shrink x xs)
+
 class (Monad m) ⇒ MonadSample m where
   name ∷ Proxy m → String
   sampleIO ∷ m a → IO (Tree a)
@@ -174,3 +191,55 @@ listOf m = do
   n ← ask
   s ← label 0 (range 0 n)
   label 1 (replicateG s m)
+
+newtype Monitored m a = Monitored (StateT IntSet (ExceptT [Int] m) a)
+  deriving (Functor, Applicative, Monad)
+
+instance MonadTrans Monitored where
+  lift m = Monitored (lift (lift m))
+
+instance MonadGen m ⇒ MonadGen (Monitored m) where
+  label i (Monitored m) = Monitored $ do
+    s ← get
+    if IntSet.member i s
+    then do
+      traceM ("Conflict at label " ++ show i ++ " (" ++ show s ++ ")")
+      throwError [i]
+    else do
+      put mempty
+      x ← label i m `catchError` \is → throwError (i:is)
+      put (IntSet.insert i s)
+      pure x
+  shrink x xs = lift (shrink x xs)
+  shrinkInt n = lift (shrinkInt n)
+  choose x = Monitored do
+    s ← get
+    let i = denominator x
+    if IntSet.member i s
+    then throwError [i]
+    else do
+      put (IntSet.insert i s)
+      choose x
+  chooseInt i = Monitored do
+    s ← get
+    if IntSet.member i s
+    then throwError [i]
+    else do
+      put (IntSet.insert i s)
+      chooseInt i
+  range m n = Monitored do
+    s ← get
+    let i = fromEnum m - fromEnum n
+    if IntSet.member i s
+    then throwError [i]
+    else do
+      put (IntSet.insert i s)
+      range m n
+
+instance MonadSample m ⇒ MonadSample (Monitored m) where
+  name _ = "monitored-" ++ name (Proxy @m)
+  sampleIO (Monitored m) = sampleIO do
+    x ← runExceptT (evalStateT m mempty)
+    case x of
+      Left is → error ("Conflict at " ++ show is)
+      Right y → pure y

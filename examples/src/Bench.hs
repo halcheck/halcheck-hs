@@ -17,7 +17,7 @@ import qualified Example.NonInterference.Stack as Stack
 
 import Control.DeepSeq (NFData (..))
 import Control.Monad (replicateM)
-import Control.Monad.Gen (MonadGen, MonadSample (name), sampleIO)
+import Control.Monad.Gen (MonadGen, MonadSample (name), label, sampleIO, Monitored)
 import Control.Monad.Reader (ReaderT (runReaderT))
 import Criterion.Main (Benchmark, bench, bgroup, defaultMain, nfIO, perRunEnv)
 import Data.Graph (outdegree)
@@ -61,12 +61,17 @@ test n p m =
     , testShrink p (m ∷ HH.Gen a)
     , testGen (m ∷ HH'.Gen a)
     , testShrink p (m ∷ HH'.Gen a)
+    , testGen (m ∷ Monitored HH'.Gen a)
+    , testShrink p (m ∷ Monitored HH'.Gen a)
     , testGen (m ∷ FF.Gen a)
     , testShrink p (m ∷ FF.Gen a)
     , testGen (m ∷ FF'.Gen a)
     , testShrink p (m ∷ FF'.Gen a)
+    , testGen (m ∷ Monitored FF'.Gen a)
+    , testShrink p (m ∷ Monitored FF'.Gen a)
     , testGen (m ∷ QC.Gen a)
     , testGen (m ∷ QC'.Gen a)
+    , testGen (m ∷ Monitored QC'.Gen a)
     ]
 
 main ∷ IO ()
@@ -76,17 +81,17 @@ main =
     , test "pathological" id pathological
     , test "list" and (runReaderT (list bool) 30)
     , test "sorted-list" and (runReaderT (sortedList bool) 30)
-    , test "distinct-list" and (runReaderT (distinctList bool) 30)
-    , test "tree" and (runReaderT (tree bool) 30)
-    , test "binary-search-tree" and (runReaderT (binarySearchTree bool) 30)
-    , test "red-black-tree" and (runReaderT (redBlackTree bool) 10)
+    -- , test "distinct-list" and (runReaderT (distinctList bool) 30)
+    , test "tree" and (runReaderT tree 10)
+    , test "binary-search-tree" or (runReaderT binarySearchTree 10)
+    , test "red-black-tree" or (runReaderT redBlackTree 10)
     , test "graph" (all (<= 2) . outdegree) (runReaderT graph 30)
     , test "connected-graph" (all (<= 2) . outdegree) (runReaderT connectedGraph 30)
     , test "lambda" (const False) (runReaderT expr 30)
     , test
         "variation-state"
         (uncurry Register.ssni)
-        ((,) <$> Register.ruleTable <*> (Register.flags >>= Register.variationState))
+        ((,) <$> label 0 Register.ruleTable <*> (label 1 Register.flags >>= label 2 . Register.variationState))
     , test
         "as-naive"
         (const False)
